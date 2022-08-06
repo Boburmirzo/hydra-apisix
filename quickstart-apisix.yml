@@ -1,0 +1,108 @@
+###########################################################################
+#######             FOR DEMONSTRATION PURPOSES ONLY                 #######
+###########################################################################
+#                                                                         #
+# If you have not yet read the tutorial, do so now:                       #
+#  https://www.ory.sh/docs/hydra/5min-tutorial                            #
+#                                                                         #
+# This set up is only for demonstration purposes. The login               #
+# endpoint can only be used if you follow the steps in the tutorial.      #
+#                                                                         #
+###########################################################################
+version: "3.7"
+services:
+  hydra:
+    image: oryd/hydra:v1.11.9
+    ports:
+      - "5444:4444" # Public port
+      - "5445:4445" # Admin port
+      - "5555:5555" # Port for hydra token user
+    command: serve -c /etc/config/hydra/hydra.yml all --dangerous-force-http
+    volumes:
+      - type: volume
+        source: hydra-sqlite
+        target: /var/lib/sqlite
+        read_only: false
+      - type: bind
+        source: ./contrib/quickstart/5-min
+        target: /etc/config/hydra
+    environment:
+      - DSN=sqlite:///var/lib/sqlite/db.sqlite?_fk=true
+    restart: unless-stopped
+    depends_on:
+      - hydra-migrate
+    networks:
+      - intranet
+  hydra-migrate:
+    image: oryd/hydra:v1.11.9
+    environment:
+      - DSN=sqlite:///var/lib/sqlite/db.sqlite?_fk=true
+    command: migrate -c /etc/config/hydra/hydra.yml sql -e --yes
+    volumes:
+      - type: volume
+        source: hydra-sqlite
+        target: /var/lib/sqlite
+        read_only: false
+      - type: bind
+        source: ./contrib/quickstart/5-min
+        target: /etc/config/hydra
+    restart: on-failure
+    networks:
+      - intranet
+  consent:
+    environment:
+      - HYDRA_ADMIN_URL=http://hydra:4445
+    image: oryd/hydra-login-consent-node:v1.11.9
+    ports:
+      - "3000:3000"
+    restart: unless-stopped
+    networks:
+      - intranet
+  apisix:
+    image: apache/apisix:2.13.1-alpine
+    restart: always
+    volumes:
+      - ./apisix_log:/usr/local/apisix/logs
+      - ./apisix_conf/config.yaml:/usr/local/apisix/conf/config.yaml:ro
+    depends_on:
+      - etcd
+    ports:
+      - "9080:9080/tcp"
+      - "9091:9091/tcp"
+      - "9443:9443/tcp"
+      - "9092:9092/tcp"
+    networks:
+      - intranet
+
+  etcd:
+    image: bitnami/etcd:3.4.15
+    restart: always
+    volumes:
+      - etcd_data:/bitnami/etcd
+    environment:
+      ETCD_ENABLE_V2: "true"
+      ALLOW_NONE_AUTHENTICATION: "yes"
+      ETCD_ADVERTISE_CLIENT_URLS: "http://0.0.0.0:2379"
+      ETCD_LISTEN_CLIENT_URLS: "http://0.0.0.0:2379"
+    ports:
+      - "12379:2379/tcp"
+    networks:
+      - intranet
+
+  productapi:
+    image: productapi
+    build:
+      context: ./productapi
+      dockerfile: Dockerfile
+    ports:
+      - "5556:80"    
+    networks:
+      - intranet
+
+networks:
+  intranet:
+     driver: bridge
+volumes:
+  hydra-sqlite:
+  db-data:
+  etcd_data:
