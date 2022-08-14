@@ -20,4 +20,4 @@ docker-compose -f quickstart-apisix.yml exec hydra hydra token client --endpoint
 
 # Token introspect:
 
-docker-compose -f quickstart-apisix.yml exec hydra hydra token introspect --endpoint http://127.0.0.1:4445/ {INSERT_TOKEN}    
+docker-compose -f quickstart-apisix.yml exec hydra hydra token introspect --endpoint http://127.0.0.1:4445/ 7mIhJI5Y0_xAOf5M3EQqSRGFnz1dG_uyg7UxHwHhaeo.vIWxffgSsBH8cLo0o5M3i0KZH52WLwRtostPmXEKJPA   
